@@ -1,0 +1,10 @@
+{
+  "key.aemil.zoom": "Zoom",
+  "key.aemil.settings": "Aemil Settings",
+  "key.categories.aemil.client": "Aemil",
+  "screen.aemil.settings": "Aemil Settings",
+  "screen.aemil.zoom.instructions": "Hold C to zoom; scroll while held",
+  "screen.aemil.zoom.default": "Default zoom: %s",
+  "screen.aemil.zoom.minimum": "Minimum zoom: %s",
+  "screen.aemil.zoom.maximum": "Maximum zoom: %s"
+}

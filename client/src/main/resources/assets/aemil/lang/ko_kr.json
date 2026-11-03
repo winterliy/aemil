@@ -1,0 +1,10 @@
+{
+  "key.aemil.zoom": "확대",
+  "key.aemil.settings": "Aemil 설정",
+  "key.categories.aemil.client": "Aemil",
+  "screen.aemil.settings": "Aemil 설정",
+  "screen.aemil.zoom.instructions": "C를 누른 채 확대하고, 누른 상태에서 스크롤하세요",
+  "screen.aemil.zoom.default": "기본 확대: %s",
+  "screen.aemil.zoom.minimum": "최소 확대: %s",
+  "screen.aemil.zoom.maximum": "최대 확대: %s"
+}

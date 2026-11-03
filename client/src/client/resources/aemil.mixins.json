@@ -1,0 +1,12 @@
+{
+  "required": true,
+  "package": "dev.aemil.client.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "client": [
+    "CameraZoomMixin",
+    "MouseZoomMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}
