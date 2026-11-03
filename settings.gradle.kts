@@ -1,5 +1,6 @@
 pluginManagement {
     repositories {
+        google()
         maven("https://maven.fabricmc.net/")
         gradlePluginPortal()
         mavenCentral()
@@ -8,6 +9,7 @@ pluginManagement {
 
 dependencyResolutionManagement {
     repositories {
+        google()
         maven("https://maven.fabricmc.net/")
         mavenCentral()
     }
