@@ -13,10 +13,15 @@ internal object LauncherPreferences {
     }
 
     fun setLanguage(language: AppLanguage) {
+        properties().apply { setProperty("language", if (language == AppLanguage.KOREAN) "ko" else "en") }.save()
+    }
+
+    private fun properties() = Properties().apply {
+        if (Files.exists(settingsFile)) Files.newInputStream(settingsFile).use(::load)
+    }
+
+    private fun Properties.save() {
         Files.createDirectories(settingsFile.parent)
-        val values = Properties().apply {
-            setProperty("language", if (language == AppLanguage.KOREAN) "ko" else "en")
-        }
-        Files.newOutputStream(settingsFile).use { values.store(it, "Aemil launcher settings") }
+        Files.newOutputStream(settingsFile).use { store(it, "Aemil launcher settings") }
     }
 }

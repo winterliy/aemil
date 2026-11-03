@@ -29,7 +29,7 @@ class AemilClient : ClientModInitializer {
 
         ScreenEvents.AFTER_INIT.register { client, screen, scaledWidth, scaledHeight ->
             if (screen.title == Component.translatable("controls.title")) {
-                Screens.getButtons(screen).add(
+                Screens.getWidgets(screen).add(
                     Button.builder(Component.translatable("screen.aemil.zoom.settings")) {
                         client.gui.setScreen(ZoomControlsScreen(screen))
                     }.bounds(8, scaledHeight - 28, 132, 20).build(),

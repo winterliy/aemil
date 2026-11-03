@@ -40,19 +40,19 @@ object ZoomController {
         held = isDown
     }
 
-    fun isHeld(): Boolean = held
+    @JvmStatic fun isHeld(): Boolean = held
     fun minimum(): Double = minimum
     fun maximum(): Double = maximum
     fun default(): Double = default
 
     @Synchronized
-    fun adjustFromScroll(amount: Double) {
+    @JvmStatic fun adjustFromScroll(amount: Double) {
         if (held && amount.isFinite() && amount != 0.0) {
             factor = (factor * STEP.pow(amount)).coerceIn(minimum, maximum)
         }
     }
 
-    fun applyToFov(fov: Float): Float = if (held) (fov / factor.toFloat()).coerceAtLeast(1.0f) else fov
+    @JvmStatic fun applyToFov(fov: Float): Float = if (held) (fov / factor.toFloat()).coerceAtLeast(1.0f) else fov
 
     private fun save() {
         Files.createDirectories(configPath.parent)
