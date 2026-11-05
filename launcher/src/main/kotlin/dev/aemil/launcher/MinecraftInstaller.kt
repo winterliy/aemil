@@ -65,13 +65,34 @@ internal object MinecraftInstaller {
             ?: error("Minecraft $gameVersion has no client download")
         val clientPath = vanillaDir.resolve("$gameVersion.jar")
 
-        progress("Finding a stable Fabric loader for $gameVersion", 0, 1)
+        progress("Finding a stable Aemil Loader for $gameVersion", 0, 1)
         val loaders = getJsonArray(URI.create("$FABRIC_META_URL/$gameVersion"))
         val loader = loaders.firstOrNull { it.asJsonObject.getAsJsonObject("loader").get("stable")?.asBoolean == true }
             ?.asJsonObject?.getAsJsonObject("loader")?.get("version")?.asString
-            ?: error("No stable Fabric loader is available for Minecraft $gameVersion")
+            ?: error("No stable Aemil Loader is available for Minecraft $gameVersion")
         val fabricProfile = getJson(URI.create("$FABRIC_META_URL/$gameVersion/$loader/profile/json"))
-        val profileId = fabricProfile.get("id")?.asString ?: error("Fabric profile did not include an ID")
+        val fabricProfileId = fabricProfile.get("id")?.asString ?: error("Loader profile did not include an ID")
+        val profileId = fabricProfileId.replaceFirst("fabric-loader-", "aemil-loader-")
+        fabricProfile.addProperty("id", profileId)
+        AemilPaths.installAemilLoader(gameVersion)?.let { loaderJar ->
+            val aemilVersion = AemilPaths::class.java.getResourceAsStream("/aemil-version.properties")?.use { input ->
+                java.util.Properties().apply { load(input) }.getProperty("version")
+            } ?: error("Aemil version metadata is missing from the launcher")
+            val relativeJarPath = AemilPaths.minecraftRoot.relativize(loaderJar).toString().replace('\\', '/')
+            val library = JsonObject().apply {
+                addProperty("name", "dev.aemil:aemil-loader:$aemilVersion")
+                add("downloads", JsonObject().apply {
+                    add("artifact", JsonObject().apply {
+                        addProperty("path", relativeJarPath)
+                        addProperty("url", "https://github.com/winterliy/aemil/releases/download/v$aemilVersion/aemil-loader.jar")
+                        addProperty("sha1", sha1(loaderJar))
+                        addProperty("size", Files.size(loaderJar))
+                    })
+                })
+            }
+            val libraries = fabricProfile.getAsJsonArray("libraries") ?: JsonArray().also { fabricProfile.add("libraries", it) }
+            libraries.add(library)
+        }
         val fabricDir = AemilPaths.minecraftRoot.resolve("versions").resolve(profileId)
         Files.createDirectories(fabricDir)
         val profilePath = fabricDir.resolve("$profileId.json")
@@ -145,14 +166,16 @@ internal object MinecraftInstaller {
             JsonObject()
         }
         val profiles = root.getAsJsonObject("profiles") ?: JsonObject().also { root.add("profiles", it) }
-        val profileName = "Aemil Fabric $gameVersion"
-        val profile = profiles.getAsJsonObject(profileName) ?: JsonObject().also { created ->
+        val profileName = "Aemil Loader $gameVersion"
+        val legacyProfile = profiles.remove("Aemil Fabric $gameVersion")?.asJsonObject
+        val profile = profiles.getAsJsonObject(profileName) ?: legacyProfile ?: JsonObject().also { created ->
             val now = Instant.now().toString()
             created.addProperty("name", profileName)
             created.addProperty("type", "custom")
             created.addProperty("created", now)
-            profiles.add(profileName, created)
         }
+        profile.addProperty("name", profileName)
+        profiles.add(profileName, profile)
         profile.addProperty("lastVersionId", profileId)
         profile.addProperty("lastUsed", Instant.now().toString())
         wheatIcon(assetIndex)?.let { profile.addProperty("icon", it) }
@@ -315,6 +338,19 @@ internal object MinecraftInstaller {
         val icon = AemilPaths.minecraftRoot.resolve("assets/objects/${hash.take(2)}/$hash")
         if (Files.notExists(icon)) return null
         return java.util.Base64.getEncoder().encodeToString(Files.readAllBytes(icon))
+    }
+
+    private fun sha1(path: Path): String {
+        val digest = MessageDigest.getInstance("SHA-1")
+        Files.newInputStream(path).use { input ->
+            val buffer = ByteArray(64 * 1024)
+            while (true) {
+                val count = input.read(buffer)
+                if (count < 0) break
+                digest.update(buffer, 0, count)
+            }
+        }
+        return digest.digest().joinToString("") { "%02x".format(it) }
     }
 
     private fun writeJson(path: Path, json: JsonObject) {

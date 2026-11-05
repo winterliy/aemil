@@ -31,25 +31,25 @@ Build the runnable launcher JAR for the current desktop OS:
 ./gradlew :launcher:uberJar
 ```
 
-The JAR is written to `launcher/build/libs/aemil-launcher-0.1.0-alpha.2-all.jar`. It currently includes the current OS's Compose Desktop runtime. Native `.dmg` and `.exe` packaging, followed by a native C/C++ application, are planned after the JAR workflow is stable.
+The JAR is written to `launcher/build/libs/aemil-launcher-0.1.0-alpha.3-all.jar`. It currently includes the current OS's Compose Desktop runtime. Native `.dmg` and `.exe` packaging, followed by a native C/C++ application, are planned after the JAR workflow is stable.
 
 The launcher will use the standard Minecraft data root and store Aemil-managed data in its `aemil` subdirectory:
 
 - macOS: `~/Library/Application Support/minecraft/aemil`
 - Windows: `%APPDATA%\.minecraft\aemil`
 
-Minecraft versions, libraries, assets, Fabric profiles, and the runtime `mods` folder use the standard `.minecraft` layout. Aemil's own settings and user-added mods live under `.minecraft/aemil`. The installer creates an `Aemil Fabric <version>` installation in the vanilla Minecraft Launcher; sign-in and gameplay stay in that launcher. Enabled user mods are copied into `.minecraft/mods` without deleting files Aemil does not manage. Aemil's built-in client is installed there for Minecraft 26.3 only.
+Minecraft versions, libraries, assets, Aemil Loader profiles, and the runtime `mods` folder use the standard `.minecraft` layout. Aemil's own settings and user-added mods live under `.minecraft/aemil`. The installer creates an `Aemil Loader <version>` installation in the vanilla Minecraft Launcher; sign-in and gameplay stay in that launcher. Aemil Loader currently uses Fabric Loader components under the hood. For Minecraft 26.3, its integrated feature module is added as a profile library instead of a separate file in `mods`, and hidden from Mod Menu. Other bundled mods retain their original interfaces.
 
 The launcher settings store the English/Korean language choice in `launcher.properties`. Aemil's zoom settings are configured in-game and stored in the Fabric config directory.
 
 ## Current scope
 
 - Initial client target: Minecraft 26.3.
-- The launcher version selector searches Mojang's release and snapshot list. Install downloads Minecraft and Fabric metadata, assets, and libraries into the standard `.minecraft` directory, then registers the profile in `launcher_profiles.json`.
-- Close Minecraft Launcher during installation so it does not overwrite the profile registration. Reopen it and choose `Aemil Fabric <version>` to sign in and play.
-- The Aemil client JAR and integrated feature modules currently target Minecraft 26.3. Other selected versions receive a Fabric profile and enabled user mods, without the 26.3 Aemil feature bundle.
+- The launcher version selector searches Mojang's release and snapshot list. Install downloads Minecraft and loader metadata, assets, and libraries into the standard `.minecraft` directory, then registers the profile in `launcher_profiles.json`.
+- Close Minecraft Launcher during installation so it does not overwrite the profile registration. Reopen it and choose `Aemil Loader <version>` to sign in and play.
+- Aemil Loader's integrated feature module currently targets Minecraft 26.3. Other selected versions receive an Aemil Loader profile and enabled user mods, without the 26.3 Aemil feature bundle.
 - Launcher language choices: English and Korean.
-- Zoom: listed in Minecraft `Options → Controls`; hold `C`, scroll while held to adjust magnification, release and press again to return to the configured default. Default/minimum/maximum values are stored in the Aemil client config.
+- Zoom: listed in Minecraft `Options → Controls`; hold `C`, scroll while held to adjust magnification, release and press again to return to the configured default. Default/minimum/maximum values are stored in the Aemil config.
 - Dynamic FPS uses its upstream 26.3 build and original configuration UI through Mod Menu and Cloth Config. These components are bundled and are not listed as user-toggleable mods. Mod Menu's update checker is disabled by default; Aemil has no Modrinth catalog or integration.
 - FerriteCore, Lithium, and Krypton provide built-in memory, game logic, and networking optimizations. Hydrogen is excluded because it is archived and its upstream recommends FerriteCore as a replacement; its old patches are not copied into the current FerriteCore code.
 - Continuity provides connected textures with its upstream configuration screen. It is enabled as a built-in component and is not a user-toggleable mod.

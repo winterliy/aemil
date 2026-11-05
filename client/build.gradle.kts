@@ -88,7 +88,7 @@ tasks.withType<JavaCompile>().configureEach {
 loom {
     splitEnvironmentSourceSets()
     mods {
-        register("aemil") {
+        register("aemil-loader") {
             sourceSet(sourceSets.main.get())
             sourceSet("client")
         }

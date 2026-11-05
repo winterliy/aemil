@@ -1,6 +1,6 @@
 # Vanilla Launcher JAR Implementation Plan
 
-**Goal:** Build a runnable Aemil JAR that installs Fabric profiles into the standard Minecraft directory, then lets the official Minecraft Launcher handle sign-in and gameplay.
+**Goal:** Build a runnable Aemil JAR that installs Aemil Loader profiles into the standard Minecraft directory, then lets the official Minecraft Launcher handle sign-in and gameplay.
 
 **Design:** `docs/superpowers/specs/2026-11-04-launcher-install-and-run-design.md`
 
@@ -9,7 +9,7 @@
 1. **Vanilla profile installation**
    - [x] Install version JSON and client JAR under `.minecraft/versions`.
    - [x] Download libraries and assets into standard locations.
-   - [x] Register an `Aemil Fabric <version>` launcher profile while preserving other entries.
+   - [x] Register an `Aemil Loader <version>` launcher profile while preserving other entries.
    - [x] Keep Aemil-owned settings and source mods under `.minecraft/aemil`.
 2. **Mod file boundaries**
    - [x] Copy enabled user mods into `.minecraft/mods` without clearing unrelated files.

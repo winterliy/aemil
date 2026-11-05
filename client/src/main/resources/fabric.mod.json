@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
-  "id": "aemil",
+  "id": "aemil-loader",
   "version": "${version}",
-  "name": "Aemil Client",
-  "description": "A Fabric-based Minecraft client with integrated Aemil features.",
+  "name": "Aemil Loader",
+  "description": "Aemil's integrated Minecraft loader and client features.",
   "environment": "client",
   "entrypoints": {
     "client": [

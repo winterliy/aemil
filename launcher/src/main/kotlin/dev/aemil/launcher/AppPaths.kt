@@ -33,23 +33,35 @@ internal object AemilPaths {
         val gameDirectory = gameDirectory(version)
         listOf("mods", "config", "logs", "resourcepacks", "resources", "saves").forEach { Files.createDirectories(gameDirectory.resolve(it)) }
         val modMenuConfig = gameDirectory.resolve("config/modmenu.json")
-        if (Files.notExists(modMenuConfig)) Files.writeString(modMenuConfig, "{\"update_checker\":false}\n")
+        val config = if (Files.exists(modMenuConfig)) {
+            Files.newBufferedReader(modMenuConfig).use { com.google.gson.JsonParser.parseReader(it).asJsonObject }
+        } else {
+            com.google.gson.JsonObject()
+        }
+        config.addProperty("update_checker", false)
+        val hiddenMods = config.getAsJsonArray("hidden_mods") ?: com.google.gson.JsonArray().also { config.add("hidden_mods", it) }
+        if (hiddenMods.none { it.asString == "aemil-loader" }) hiddenMods.add("aemil-loader")
+        Files.createDirectories(modMenuConfig.parent)
+        Files.writeString(modMenuConfig, com.google.gson.GsonBuilder().setPrettyPrinting().create().toJson(config))
     }
 
-    fun installBuiltInClient(version: String): Path? {
+    fun installAemilLoader(version: String): Path? {
         if (version != "26.3") return null
-        val clientJar = root.resolve("builtin-mods/aemil-client.jar")
-        Files.createDirectories(clientJar.parent)
-        val resource = AemilPaths::class.java.getResourceAsStream("/builtin/aemil-client.jar")
-            ?: error("The built-in Aemil client JAR is missing from the launcher")
-        val temporary = clientJar.resolveSibling("${clientJar.fileName}.tmp")
+        val aemilVersion = AemilPaths::class.java.getResourceAsStream("/aemil-version.properties")?.use { input ->
+            java.util.Properties().apply { load(input) }.getProperty("version")
+        } ?: error("Aemil version metadata is missing from the launcher")
+        val loaderJar = minecraftRoot.resolve("libraries/dev/aemil/aemil-loader/$aemilVersion/aemil-loader-$aemilVersion.jar")
+        Files.createDirectories(loaderJar.parent)
+        val resource = AemilPaths::class.java.getResourceAsStream("/builtin/aemil-loader.jar")
+            ?: error("The built-in Aemil Loader JAR is missing from the launcher")
+        val temporary = loaderJar.resolveSibling("${loaderJar.fileName}.tmp")
         resource.use { input -> Files.copy(input, temporary, StandardCopyOption.REPLACE_EXISTING) }
         try {
-            Files.move(temporary, clientJar, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE)
+            Files.move(temporary, loaderJar, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE)
         } catch (_: java.nio.file.AtomicMoveNotSupportedException) {
-            Files.move(temporary, clientJar, StandardCopyOption.REPLACE_EXISTING)
+            Files.move(temporary, loaderJar, StandardCopyOption.REPLACE_EXISTING)
         }
-        return clientJar
+        return loaderJar
     }
 
     private fun installPhosphor(version: String): Path? {
@@ -82,12 +94,11 @@ internal object AemilPaths {
         val desired = linkedMapOf<String, Path>()
         UserModsRepository.list().filter(UserMod::enabled).forEach { mod ->
             val name = mod.path.fileName.toString().removeSuffix(".disabled")
-            require(name !in setOf("aemil-client.jar", "aemil-phosphor-fabric-1.19.x.jar")) {
+            require(name !in setOf("aemil-loader.jar", "aemil-client.jar", "aemil-phosphor-fabric-1.19.x.jar")) {
                 "The filename $name is reserved for an Aemil built-in component"
             }
             desired[name] = mod.path
         }
-        installBuiltInClient(version)?.let { desired[it.fileName.toString()] = it }
         installPhosphor(version)?.let { desired[it.fileName.toString()] = it }
 
         previouslyManaged.filterNot(desired::containsKey).forEach { name ->

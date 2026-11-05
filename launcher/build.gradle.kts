@@ -29,10 +29,14 @@ dependencies {
 val embeddedClientJar = project(":client").tasks.named<Jar>("jar")
 
 tasks.processResources {
+    inputs.property("aemilVersion", project.version)
+    filesMatching("aemil-version.properties") {
+        expand("aemilVersion" to project.version)
+    }
     dependsOn(embeddedClientJar)
     from(embeddedClientJar.map { it.archiveFile }) {
         into("builtin")
-        rename { "aemil-client.jar" }
+        rename { "aemil-loader.jar" }
     }
     from(phosphorBuiltin) {
         into("builtin")

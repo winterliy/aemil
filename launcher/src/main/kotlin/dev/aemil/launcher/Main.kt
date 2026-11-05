@@ -97,7 +97,7 @@ private fun AemilApp() {
             NavigationButton(label(language, "Mods", "모드"), page == Page.MODS) { page = Page.MODS }
             NavigationButton(label(language, "Settings", "설정"), page == Page.SETTINGS) { page = Page.SETTINGS }
             Spacer(Modifier.weight(1f))
-            Text("Fabric · Minecraft Launcher", color = Color(0xFF92A09F), fontSize = 12.sp)
+            Text("Aemil Loader · Minecraft Launcher", color = Color(0xFF92A09F), fontSize = 12.sp)
         }
 
         Column(Modifier.fillMaxSize().padding(horizontal = 34.dp, vertical = 28.dp)) {
@@ -126,7 +126,7 @@ private fun AemilApp() {
                                         }
                                     }
                                 }
-                                installStatus = label(language, "Installed. Select Aemil Fabric ${installedProfile?.gameVersion} in Minecraft Launcher.", "설치 완료. Minecraft Launcher에서 Aemil Fabric ${installedProfile?.gameVersion} 프로필을 선택하세요.")
+                                installStatus = label(language, "Installed. Select Aemil Loader ${installedProfile?.gameVersion} in Minecraft Launcher.", "설치 완료. Minecraft Launcher에서 Aemil Loader ${installedProfile?.gameVersion} 프로필을 선택하세요.")
                             } catch (failure: Exception) {
                                 installStatus = failure.message ?: label(language, "Installation failed", "설치 실패")
                             } finally {
@@ -167,7 +167,7 @@ private fun PlayPage(
     onVersionSelected: (String) -> Unit,
     onInstall: () -> Unit,
 ) {
-    Text(label(language, "Install Aemil into Minecraft Launcher", "Aemil을 Minecraft Launcher에 설치하세요"), fontSize = 29.sp)
+    Text(label(language, "Install Aemil into Minecraft Launcher", "Aemil을 Minecraft Launcher에 설치하세요"), fontSize = 29.sp, color = Color.White)
     Text(label(language, "Choose a Minecraft Java version", "Minecraft Java 버전을 선택하세요"), color = Color(0xFFAAB5B4))
     Spacer(Modifier.height(28.dp))
     Card(colors = CardDefaults.cardColors(containerColor = Color(0xFF1B2225))) {
@@ -176,7 +176,7 @@ private fun PlayPage(
             VersionPicker(language, versions, selectedVersion, onVersionSelected)
             Text(versionsStatus, color = Color(0xFF92A09F), fontSize = 12.sp)
             Text(label(language, "Aemil built-in features target Minecraft 26.3.", "Aemil 내장 기능의 우선 지원 버전은 Minecraft 26.3입니다."), color = Color(0xFFB5C2C0))
-            Text(label(language, "Aemil built-in features currently load on 26.3; other versions use Fabric and your own mods.", "Aemil 내장 기능은 현재 26.3에서 동작하며, 다른 버전은 Fabric과 사용자 모드로 실행합니다."), color = Color(0xFF9DA9A8), fontSize = 12.sp)
+            Text(label(language, "Aemil built-in features currently load on 26.3; other versions use Aemil Loader and your own mods.", "Aemil 내장 기능은 현재 26.3에서 동작하며, 다른 버전은 Aemil Loader와 사용자 모드로 실행합니다."), color = Color(0xFF9DA9A8), fontSize = 12.sp)
             Text(label(language, "Close Minecraft Launcher before installing so it can pick up the new profile.", "새 프로필을 인식할 수 있도록 설치 전에 Minecraft Launcher를 종료하세요."), color = Color(0xFF9DA9A8), fontSize = 12.sp)
             Button(onClick = onInstall, enabled = !installing) {
                 Text(if (installing) label(language, "Installing…", "설치 중…") else label(language, "Install to Minecraft Launcher", "Minecraft Launcher에 설치"))
@@ -187,11 +187,11 @@ private fun PlayPage(
             if (installStatus.isNotBlank()) Text(installStatus, color = Color(0xFFB5C2C0), fontSize = 12.sp)
             installedProfile?.let { profile ->
                 Text(
-                    label(language, "Installed: Minecraft ${profile.gameVersion} · Fabric ${profile.fabricVersion}", "설치됨: Minecraft ${profile.gameVersion} · Fabric ${profile.fabricVersion}"),
+                    label(language, "Installed: Minecraft ${profile.gameVersion} · Aemil Loader ${profile.fabricVersion}", "설치됨: Minecraft ${profile.gameVersion} · Aemil Loader ${profile.fabricVersion}"),
                     color = Color(0xFF27D7B2),
                 )
                 Text(
-                    label(language, "Open Minecraft Launcher, choose Aemil Fabric ${profile.gameVersion}, then click Play.", "Minecraft Launcher에서 Aemil Fabric ${profile.gameVersion}을 선택한 뒤 플레이를 누르세요."),
+                    label(language, "Open Minecraft Launcher, choose Aemil Loader ${profile.gameVersion}, then click Play.", "Minecraft Launcher에서 Aemil Loader ${profile.gameVersion}을 선택한 뒤 플레이를 누르세요."),
                     color = Color(0xFFB5C2C0),
                 )
             }
