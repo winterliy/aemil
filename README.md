@@ -31,7 +31,7 @@ Build the runnable launcher JAR for the current desktop OS:
 ./gradlew :launcher:uberJar
 ```
 
-The JAR is written to `launcher/build/libs/aemil-launcher-0.1.0-alpha.1-all.jar`. It currently includes the current OS's Compose Desktop runtime. Native `.dmg` and `.exe` packaging, followed by a native C/C++ application, are planned after the JAR workflow is stable.
+The JAR is written to `launcher/build/libs/aemil-launcher-0.1.0-alpha.2-all.jar`. It currently includes the current OS's Compose Desktop runtime. Native `.dmg` and `.exe` packaging, followed by a native C/C++ application, are planned after the JAR workflow is stable.
 
 The launcher will use the standard Minecraft data root and store Aemil-managed data in its `aemil` subdirectory:
 

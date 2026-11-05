@@ -58,6 +58,7 @@ tasks.register<Jar>("uberJar") {
     archiveClassifier.set("all")
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
     manifest.attributes["Main-Class"] = "dev.aemil.launcher.MainKt"
+    manifest.attributes["Enable-Native-Access"] = "ALL-UNNAMED"
     from(sourceSets.main.get().output)
     from(configurations.runtimeClasspath.get().map { dependency ->
         if (dependency.isDirectory) dependency else zipTree(dependency)

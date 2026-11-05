@@ -1,6 +1,7 @@
 package dev.aemil.launcher
 
 import com.google.gson.JsonElement
+import com.google.gson.JsonArray
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
 import com.google.gson.GsonBuilder
@@ -65,7 +66,7 @@ internal object MinecraftInstaller {
         val clientPath = vanillaDir.resolve("$gameVersion.jar")
 
         progress("Finding a stable Fabric loader for $gameVersion", 0, 1)
-        val loaders = getJson(URI.create("$FABRIC_META_URL/$gameVersion")).asJsonArray
+        val loaders = getJsonArray(URI.create("$FABRIC_META_URL/$gameVersion"))
         val loader = loaders.firstOrNull { it.asJsonObject.getAsJsonObject("loader").get("stable")?.asBoolean == true }
             ?.asJsonObject?.getAsJsonObject("loader")?.get("version")?.asString
             ?: error("No stable Fabric loader is available for Minecraft $gameVersion")
@@ -132,11 +133,11 @@ internal object MinecraftInstaller {
         val installedNatives = natives.map { (download, exclusions) -> NativeLibrary(download.target, exclusions) }
         AemilPaths.ensureGameLayout(gameVersion)
         AemilPaths.synchronizeUserMods(gameVersion)
-        registerLauncherProfile(gameVersion, profileId)
+        registerLauncherProfile(gameVersion, profileId, assetIndex)
         return InstalledProfile(gameVersion, versionEntry.get("type").asString, loader, profileId, profilePath, clientPath, assetIndex, loggingConfigPath, installedNatives)
     }
 
-    private fun registerLauncherProfile(gameVersion: String, profileId: String) {
+    private fun registerLauncherProfile(gameVersion: String, profileId: String, assetIndex: JsonObject) {
         val launcherProfiles = AemilPaths.minecraftRoot.resolve("launcher_profiles.json")
         val root = if (Files.exists(launcherProfiles)) {
             Files.newBufferedReader(launcherProfiles).use { JsonParser.parseReader(it).asJsonObject }
@@ -154,6 +155,7 @@ internal object MinecraftInstaller {
         }
         profile.addProperty("lastVersionId", profileId)
         profile.addProperty("lastUsed", Instant.now().toString())
+        wheatIcon(assetIndex)?.let { profile.addProperty("icon", it) }
         val temporary = launcherProfiles.resolveSibling("${launcherProfiles.fileName}.tmp")
         Files.writeString(temporary, GsonBuilder().setPrettyPrinting().create().toJson(root))
         try {
@@ -287,6 +289,14 @@ internal object MinecraftInstaller {
     }
 
     private fun getJson(uri: URI, expectedSha1: String? = null): JsonObject {
+        return getJsonElement(uri, expectedSha1).asJsonObject
+    }
+
+    private fun getJsonArray(uri: URI, expectedSha1: String? = null): JsonArray {
+        return getJsonElement(uri, expectedSha1).asJsonArray
+    }
+
+    private fun getJsonElement(uri: URI, expectedSha1: String? = null): JsonElement {
         val request = HttpRequest.newBuilder(uri).header("User-Agent", "AemilLauncher/0.1").GET().build()
         val response = http.send(request, HttpResponse.BodyHandlers.ofByteArray())
         check(response.statusCode() in 200..299) { "Request failed (${response.statusCode()}): $uri" }
@@ -295,7 +305,16 @@ internal object MinecraftInstaller {
             val actual = MessageDigest.getInstance("SHA-1").digest(body).joinToString("") { "%02x".format(it) }
             check(actual.equals(expectedSha1, ignoreCase = true)) { "SHA-1 mismatch for metadata at $uri" }
         }
-        return JsonParser.parseString(body.toString(Charsets.UTF_8)).asJsonObject
+        return JsonParser.parseString(body.toString(Charsets.UTF_8))
+    }
+
+    private fun wheatIcon(assetIndex: JsonObject): String? {
+        val hash = assetIndex.getAsJsonObject("objects")
+            ?.get("minecraft/textures/item/wheat.png")
+            ?.asJsonObject?.get("hash")?.asString ?: return null
+        val icon = AemilPaths.minecraftRoot.resolve("assets/objects/${hash.take(2)}/$hash")
+        if (Files.notExists(icon)) return null
+        return java.util.Base64.getEncoder().encodeToString(Files.readAllBytes(icon))
     }
 
     private fun writeJson(path: Path, json: JsonObject) {
