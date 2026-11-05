@@ -154,11 +154,11 @@ internal object MinecraftInstaller {
         val installedNatives = natives.map { (download, exclusions) -> NativeLibrary(download.target, exclusions) }
         AemilPaths.ensureGameLayout(gameVersion)
         AemilPaths.synchronizeUserMods(gameVersion)
-        registerLauncherProfile(gameVersion, profileId, assetIndex)
+        registerLauncherProfile(gameVersion, profileId, assetIndex, clientPath)
         return InstalledProfile(gameVersion, versionEntry.get("type").asString, loader, profileId, profilePath, clientPath, assetIndex, loggingConfigPath, installedNatives)
     }
 
-    private fun registerLauncherProfile(gameVersion: String, profileId: String, assetIndex: JsonObject) {
+    private fun registerLauncherProfile(gameVersion: String, profileId: String, assetIndex: JsonObject, clientPath: Path) {
         val launcherProfiles = AemilPaths.minecraftRoot.resolve("launcher_profiles.json")
         val root = if (Files.exists(launcherProfiles)) {
             Files.newBufferedReader(launcherProfiles).use { JsonParser.parseReader(it).asJsonObject }
@@ -178,7 +178,7 @@ internal object MinecraftInstaller {
         profiles.add(profileName, profile)
         profile.addProperty("lastVersionId", profileId)
         profile.addProperty("lastUsed", Instant.now().toString())
-        wheatIcon(assetIndex)?.let { profile.addProperty("icon", it) }
+        wheatIcon(assetIndex, clientPath)?.let { profile.addProperty("icon", it) }
         val temporary = launcherProfiles.resolveSibling("${launcherProfiles.fileName}.tmp")
         Files.writeString(temporary, GsonBuilder().setPrettyPrinting().create().toJson(root))
         try {
@@ -331,13 +331,22 @@ internal object MinecraftInstaller {
         return JsonParser.parseString(body.toString(Charsets.UTF_8))
     }
 
-    private fun wheatIcon(assetIndex: JsonObject): String? {
+    private fun wheatIcon(assetIndex: JsonObject, clientPath: Path): String? {
         val hash = assetIndex.getAsJsonObject("objects")
             ?.get("minecraft/textures/item/wheat.png")
-            ?.asJsonObject?.get("hash")?.asString ?: return null
-        val icon = AemilPaths.minecraftRoot.resolve("assets/objects/${hash.take(2)}/$hash")
-        if (Files.notExists(icon)) return null
-        return java.util.Base64.getEncoder().encodeToString(Files.readAllBytes(icon))
+            ?.asJsonObject?.get("hash")?.asString
+        if (hash != null) {
+            val icon = AemilPaths.minecraftRoot.resolve("assets/objects/${hash.take(2)}/$hash")
+            if (Files.exists(icon)) return java.util.Base64.getEncoder().encodeToString(Files.readAllBytes(icon))
+        }
+        return wheatIconFromClientJar(clientPath)
+    }
+
+    private fun wheatIconFromClientJar(clientPath: Path): String? = ZipFile(clientPath.toFile()).use { jar ->
+        val entry = jar.getEntry("assets/minecraft/textures/item/wheat.png") ?: return@use null
+        jar.getInputStream(entry).use { input ->
+            java.util.Base64.getEncoder().encodeToString(input.readBytes())
+        }
     }
 
     private fun sha1(path: Path): String {
