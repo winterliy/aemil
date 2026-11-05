@@ -47,10 +47,7 @@ internal object AemilPaths {
 
     fun installAemilLoader(version: String): Path? {
         if (version != "26.3") return null
-        val aemilVersion = AemilPaths::class.java.getResourceAsStream("/aemil-version.properties")?.use { input ->
-            java.util.Properties().apply { load(input) }.getProperty("version")
-        } ?: error("Aemil version metadata is missing from the launcher")
-        val loaderJar = minecraftRoot.resolve("libraries/dev/aemil/aemil-loader/$aemilVersion/aemil-loader-$aemilVersion.jar")
+        val loaderJar = root.resolve("builtin-mods/aemil-loader.jar")
         Files.createDirectories(loaderJar.parent)
         val resource = AemilPaths::class.java.getResourceAsStream("/builtin/aemil-loader.jar")
             ?: error("The built-in Aemil Loader JAR is missing from the launcher")
@@ -99,6 +96,7 @@ internal object AemilPaths {
             }
             desired[name] = mod.path
         }
+        installAemilLoader(version)?.let { desired[it.fileName.toString()] = it }
         installPhosphor(version)?.let { desired[it.fileName.toString()] = it }
 
         previouslyManaged.filterNot(desired::containsKey).forEach { name ->

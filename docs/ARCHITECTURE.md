@@ -2,9 +2,9 @@
 
 ## Runtime directories
 
-The launcher uses the platform Minecraft data root. Vanilla-compatible versions, libraries, assets, logs, configs, saves, and the runtime `mods` folder remain in the standard `.minecraft` layout. Aemil's own settings and source user mods live in `.minecraft/aemil`; the launcher tracks which files it copies into `.minecraft/mods` and does not remove unrelated files. For Minecraft 26.3, the integrated Aemil Loader JAR is installed as a profile library, not as a separate file in `.minecraft/mods`.
+The launcher uses the platform Minecraft data root. Vanilla-compatible versions, libraries, assets, logs, configs, saves, and the runtime `mods` folder remain in the standard `.minecraft` layout. Aemil's own settings and source user mods live in `.minecraft/aemil`; the launcher tracks which files it copies into `.minecraft/mods` and does not remove unrelated files. For Minecraft 26.3, it automatically places the integrated Aemil Loader JAR in `.minecraft/mods` and hides the entry from Mod Menu.
 
-The installer resolves official Mojang version metadata and a stable Fabric-based Aemil Loader profile, downloads files with SHA-1 checks, registers an `Aemil Loader <version>` installation in `launcher_profiles.json`, and reports progress in the launcher. On Minecraft 26.3, the integrated Aemil feature JAR is installed as a profile library and loaded from the classpath rather than copied into `mods`. Minecraft authentication and game startup are handled by the vanilla Minecraft Launcher; Aemil does not call Microsoft authentication APIs.
+The installer resolves official Mojang version metadata and a stable Fabric-based Aemil Loader profile, downloads files with SHA-1 checks, registers an `Aemil Loader <version>` installation in `launcher_profiles.json`, and reports progress in the launcher. Minecraft authentication and game startup are handled by the vanilla Minecraft Launcher; Aemil does not call Microsoft authentication APIs.
 
 ## Built-in features and user mods
 

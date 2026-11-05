@@ -31,14 +31,14 @@ Build the runnable launcher JAR for the current desktop OS:
 ./gradlew :launcher:uberJar
 ```
 
-The JAR is written to `launcher/build/libs/aemil-launcher-0.1.0-alpha.5-all.jar`. It currently includes the current OS's Compose Desktop runtime. Native `.dmg` and `.exe` packaging, followed by a native C/C++ application, are planned after the JAR workflow is stable.
+The JAR is written to `launcher/build/libs/aemil-launcher-0.1.0-alpha.6-all.jar`. It currently includes the current OS's Compose Desktop runtime. Native `.dmg` and `.exe` packaging, followed by a native C/C++ application, are planned after the JAR workflow is stable.
 
 The launcher will use the standard Minecraft data root and store Aemil-managed data in its `aemil` subdirectory:
 
 - macOS: `~/Library/Application Support/minecraft/aemil`
 - Windows: `%APPDATA%\.minecraft\aemil`
 
-Minecraft versions, libraries, assets, Aemil Loader profiles, and the runtime `mods` folder use the standard `.minecraft` layout. Aemil's own settings and user-added mods live under `.minecraft/aemil`. The installer creates an `Aemil Loader <version>` installation in the vanilla Minecraft Launcher; sign-in and gameplay stay in that launcher. Aemil Loader currently uses Fabric Loader components under the hood. For Minecraft 26.3, its integrated feature module is added as a profile library instead of a separate file in `mods`, and hidden from Mod Menu. Other bundled mods retain their original interfaces.
+Minecraft versions, libraries, assets, Aemil Loader profiles, and the runtime `mods` folder use the standard `.minecraft` layout. Aemil's own settings and user-added mods live under `.minecraft/aemil`. The installer creates an `Aemil Loader <version>` installation in the vanilla Minecraft Launcher; sign-in and gameplay stay in that launcher. Aemil Loader uses Fabric Loader components under the hood. For Minecraft 26.3, the launcher automatically places the integrated Aemil module in `.minecraft/mods` and hides its entry from Mod Menu. Users do not install the module separately. Other bundled mods retain their original interfaces.
 
 The launcher settings store the English/Korean language choice in `launcher.properties`. Aemil's zoom settings are configured in-game and stored in the Fabric config directory.
 

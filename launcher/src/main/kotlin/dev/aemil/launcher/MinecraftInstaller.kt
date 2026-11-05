@@ -5,6 +5,10 @@ import com.google.gson.JsonArray
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
 import com.google.gson.GsonBuilder
+import java.awt.RenderingHints
+import java.awt.image.BufferedImage
+import java.io.ByteArrayInputStream
+import java.io.ByteArrayOutputStream
 import java.io.InputStream
 import java.net.URI
 import java.net.http.HttpClient
@@ -19,6 +23,7 @@ import java.util.Locale
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.zip.ZipFile
+import javax.imageio.ImageIO
 
 internal data class InstalledProfile(
     val gameVersion: String,
@@ -74,25 +79,6 @@ internal object MinecraftInstaller {
         val fabricProfileId = fabricProfile.get("id")?.asString ?: error("Loader profile did not include an ID")
         val profileId = fabricProfileId.replaceFirst("fabric-loader-", "aemil-loader-")
         fabricProfile.addProperty("id", profileId)
-        AemilPaths.installAemilLoader(gameVersion)?.let { loaderJar ->
-            val aemilVersion = AemilPaths::class.java.getResourceAsStream("/aemil-version.properties")?.use { input ->
-                java.util.Properties().apply { load(input) }.getProperty("version")
-            } ?: error("Aemil version metadata is missing from the launcher")
-            val relativeJarPath = AemilPaths.minecraftRoot.resolve("libraries").relativize(loaderJar).toString().replace('\\', '/')
-            val library = JsonObject().apply {
-                addProperty("name", "dev.aemil:aemil-loader:$aemilVersion")
-                add("downloads", JsonObject().apply {
-                    add("artifact", JsonObject().apply {
-                        addProperty("path", relativeJarPath)
-                        addProperty("url", "https://github.com/winterliy/aemil/releases/download/v$aemilVersion/aemil-loader.jar")
-                        addProperty("sha1", sha1(loaderJar))
-                        addProperty("size", Files.size(loaderJar))
-                    })
-                })
-            }
-            val libraries = fabricProfile.getAsJsonArray("libraries") ?: JsonArray().also { fabricProfile.add("libraries", it) }
-            libraries.add(library)
-        }
         val fabricDir = AemilPaths.minecraftRoot.resolve("versions").resolve(profileId)
         Files.createDirectories(fabricDir)
         val profilePath = fabricDir.resolve("$profileId.json")
@@ -337,7 +323,7 @@ internal object MinecraftInstaller {
             ?.asJsonObject?.get("hash")?.asString
         if (hash != null) {
             val icon = AemilPaths.minecraftRoot.resolve("assets/objects/${hash.take(2)}/$hash")
-            if (Files.exists(icon)) return java.util.Base64.getEncoder().encodeToString(Files.readAllBytes(icon))
+            if (Files.exists(icon)) return profileIconDataUri(Files.readAllBytes(icon))
         }
         return wheatIconFromClientJar(clientPath)
     }
@@ -345,21 +331,25 @@ internal object MinecraftInstaller {
     private fun wheatIconFromClientJar(clientPath: Path): String? = ZipFile(clientPath.toFile()).use { jar ->
         val entry = jar.getEntry("assets/minecraft/textures/item/wheat.png") ?: return@use null
         jar.getInputStream(entry).use { input ->
-            java.util.Base64.getEncoder().encodeToString(input.readBytes())
+            profileIconDataUri(input.readBytes())
         }
     }
 
-    private fun sha1(path: Path): String {
-        val digest = MessageDigest.getInstance("SHA-1")
-        Files.newInputStream(path).use { input ->
-            val buffer = ByteArray(64 * 1024)
-            while (true) {
-                val count = input.read(buffer)
-                if (count < 0) break
-                digest.update(buffer, 0, count)
-            }
+    private fun profileIconDataUri(png: ByteArray): String {
+        val source = ImageIO.read(ByteArrayInputStream(png)) ?: error("Minecraft wheat texture is not a valid PNG")
+        val scaled = BufferedImage(128, 128, BufferedImage.TYPE_INT_ARGB)
+        val graphics = scaled.createGraphics()
+        try {
+            graphics.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR)
+            graphics.drawImage(source, 0, 0, scaled.width, scaled.height, null)
+        } finally {
+            graphics.dispose()
         }
-        return digest.digest().joinToString("") { "%02x".format(it) }
+        val encoded = ByteArrayOutputStream().use { output ->
+            check(ImageIO.write(scaled, "png", output)) { "Could not encode the Aemil profile icon" }
+            java.util.Base64.getEncoder().encodeToString(output.toByteArray())
+        }
+        return "data:image/png;base64,$encoded"
     }
 
     private fun writeJson(path: Path, json: JsonObject) {
