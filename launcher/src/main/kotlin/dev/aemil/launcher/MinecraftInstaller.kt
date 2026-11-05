@@ -78,7 +78,7 @@ internal object MinecraftInstaller {
             val aemilVersion = AemilPaths::class.java.getResourceAsStream("/aemil-version.properties")?.use { input ->
                 java.util.Properties().apply { load(input) }.getProperty("version")
             } ?: error("Aemil version metadata is missing from the launcher")
-            val relativeJarPath = AemilPaths.minecraftRoot.relativize(loaderJar).toString().replace('\\', '/')
+            val relativeJarPath = AemilPaths.minecraftRoot.resolve("libraries").relativize(loaderJar).toString().replace('\\', '/')
             val library = JsonObject().apply {
                 addProperty("name", "dev.aemil:aemil-loader:$aemilVersion")
                 add("downloads", JsonObject().apply {
