@@ -27,11 +27,11 @@ internal object AemilPaths {
         }
     }
 
-    fun gameDirectory(version: String): Path = minecraftRoot
+    fun gameDirectory(version: String): Path = root.resolve("instances").resolve(version)
 
     fun ensureGameLayout(version: String) {
         val gameDirectory = gameDirectory(version)
-        listOf("mods", "config", "logs", "resourcepacks", "resources", "saves").forEach { Files.createDirectories(gameDirectory.resolve(it)) }
+        listOf("mods", "config", "logs", "resourcepacks", "resources", "saves", "screenshots", "shaderpacks").forEach { Files.createDirectories(gameDirectory.resolve(it)) }
         val modMenuConfig = gameDirectory.resolve("config/modmenu.json")
         val config = if (Files.exists(modMenuConfig)) {
             Files.newBufferedReader(modMenuConfig).use { com.google.gson.JsonParser.parseReader(it).asJsonObject }
@@ -80,16 +80,25 @@ internal object AemilPaths {
     }
 
     fun synchronizeUserMods(version: String) {
-        val instanceMods = minecraftRoot.resolve("mods")
+        val instanceMods = gameDirectory(version).resolve("mods")
         Files.createDirectories(instanceMods)
-        val managedList = root.resolve("state/managed-mods.txt")
+        val managedList = root.resolve("state/managed-mods-$version.txt")
         val previouslyManaged = if (Files.exists(managedList)) {
             Files.readAllLines(managedList).filter { name ->
                 name.isNotBlank() && Path.of(name).fileName.toString() == name && name.endsWith(".jar", ignoreCase = true)
             }.toSet()
         } else emptySet()
+        val legacyManagedList = root.resolve("state/managed-mods.txt")
+        if (Files.exists(legacyManagedList)) {
+            val legacyManaged = Files.readAllLines(legacyManagedList).toSet()
+            setOf("aemil-loader.jar", "aemil-client.jar", "aemil-phosphor-fabric-1.19.x.jar")
+                .filter(legacyManaged::contains)
+                .forEach { Files.deleteIfExists(minecraftRoot.resolve("mods").resolve(it)) }
+        }
         val desired = linkedMapOf<String, Path>()
-        UserModsRepository.list().filter(UserMod::enabled).forEach { mod ->
+        UserModsRepository.list().filter { mod ->
+            mod.enabled && Files.notExists(instanceMods.resolve("${mod.path.fileName}.disabled"))
+        }.forEach { mod ->
             val name = mod.path.fileName.toString().removeSuffix(".disabled")
             require(name !in setOf("aemil-loader.jar", "aemil-client.jar", "aemil-phosphor-fabric-1.19.x.jar")) {
                 "The filename $name is reserved for an Aemil built-in component"
@@ -98,6 +107,17 @@ internal object AemilPaths {
         }
         installAemilLoader(version)?.let { desired[it.fileName.toString()] = it }
         installPhosphor(version)?.let { desired[it.fileName.toString()] = it }
+        val apiJar = instanceMods.resolve("fabric-api.jar")
+        if (Files.exists(apiJar)) desired[apiJar.fileName.toString()] = apiJar
+        val sharedMods = minecraftRoot.resolve("mods")
+        Files.createDirectories(sharedMods)
+        Files.list(sharedMods).use { files ->
+            files.filter { Files.isRegularFile(it) && it.fileName.toString().endsWith(".jar", true) }
+                .forEach { source ->
+                    val name = source.fileName.toString()
+                    if (Files.notExists(instanceMods.resolve("$name.disabled"))) desired.putIfAbsent(name, source)
+                }
+        }
 
         previouslyManaged.filterNot(desired::containsKey).forEach { name ->
             Files.deleteIfExists(instanceMods.resolve(name))
@@ -124,6 +144,17 @@ internal object AemilPaths {
     fun openModsFolder() {
         ensureLayout()
         if (Desktop.isDesktopSupported()) Desktop.getDesktop().open(mods.toFile())
+    }
+
+    fun openModsFolder(version: String) {
+        ensureGameLayout(version)
+        if (Desktop.isDesktopSupported()) Desktop.getDesktop().open(gameDirectory(version).resolve("mods").toFile())
+    }
+
+    fun openSharedMinecraftModsFolder() {
+        val shared = minecraftRoot.resolve("mods")
+        Files.createDirectories(shared)
+        if (Desktop.isDesktopSupported()) Desktop.getDesktop().open(shared.toFile())
     }
 
     fun openLogsFolder(version: String) {

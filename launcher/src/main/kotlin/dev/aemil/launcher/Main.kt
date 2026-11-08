@@ -237,7 +237,7 @@ private fun VersionPicker(
 
 @Composable
 private fun ModsPage(language: AppLanguage, selectedVersion: String) {
-    var userMods by remember { mutableStateOf(UserModsRepository.list()) }
+    var userMods by remember(selectedVersion) { mutableStateOf(UserModsRepository.list(selectedVersion)) }
     Text(label(language, "Mods", "모드"), fontSize = 27.sp)
     Spacer(Modifier.height(18.dp))
     Card(colors = CardDefaults.cardColors(containerColor = Color(0xFF1B2225))) {
@@ -250,19 +250,22 @@ private fun ModsPage(language: AppLanguage, selectedVersion: String) {
     }
     Spacer(Modifier.height(16.dp))
     Text(label(language, "Your Fabric Mods", "사용자 Fabric 모드"), fontSize = 19.sp)
-    Text(label(language, "Only mods you add to the Aemil mods folder are listed and selectable here.", "Aemil mods 폴더에 추가한 모드만 여기에 표시하고 선택할 수 있습니다."), color = Color(0xFF9DA9A8))
+    Text(label(language, "Minecraft $selectedVersion · Add mods to this version's folder or import shared Minecraft mods.", "Minecraft $selectedVersion · 이 버전 폴더에 모드를 추가하거나 공용 Minecraft 모드를 가져오세요."), color = Color(0xFF9DA9A8))
     Spacer(Modifier.height(12.dp))
     Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-        OutlinedButton(onClick = { AemilPaths.openModsFolder(); userMods = UserModsRepository.list() }) {
-            Text(label(language, "Open Mods Folder", "mods 폴더 열기"))
+        OutlinedButton(onClick = { AemilPaths.openModsFolder(selectedVersion); userMods = UserModsRepository.list(selectedVersion) }) {
+            Text(label(language, "Open Version Mods", "버전별 mods 폴더 열기"))
         }
-        OutlinedButton(onClick = { userMods = UserModsRepository.list() }) {
+        OutlinedButton(onClick = { AemilPaths.openSharedMinecraftModsFolder() }) {
+            Text(label(language, "Open Shared Minecraft Mods", "공용 Minecraft mods 열기"))
+        }
+        OutlinedButton(onClick = { userMods = UserModsRepository.list(selectedVersion) }) {
             Text(label(language, "Refresh", "새로고침"))
         }
     }
     Spacer(Modifier.height(8.dp))
     if (userMods.isEmpty()) {
-        Text(label(language, "No user-added Fabric mods found.", "추가한 Fabric 모드가 없습니다."), color = Color(0xFF9DA9A8))
+        Text(label(language, "No mods in this version's folder. Shared Minecraft mods are copied in when installing this profile.", "이 버전 폴더에 모드가 없습니다. 공용 Minecraft 모드는 프로필 설치 시 복사됩니다."), color = Color(0xFF9DA9A8))
     } else {
         userMods.forEach { mod ->
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -271,7 +274,7 @@ private fun ModsPage(language: AppLanguage, selectedVersion: String) {
                     onCheckedChange = { enabled ->
                         UserModsRepository.setEnabled(mod, enabled)
                         AemilPaths.synchronizeUserMods(selectedVersion)
-                        userMods = UserModsRepository.list()
+                        userMods = UserModsRepository.list(selectedVersion)
                     },
                 )
                 Text(mod.displayName, color = Color(0xFFE5ECEA))

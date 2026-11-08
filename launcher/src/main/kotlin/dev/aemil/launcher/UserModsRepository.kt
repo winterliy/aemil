@@ -10,12 +10,15 @@ internal data class UserMod(val path: Path, val enabled: Boolean) {
 }
 
 internal object UserModsRepository {
-    fun list(): List<UserMod> {
+    fun list(version: String? = null): List<UserMod> {
         AemilPaths.ensureLayout()
-        return Files.list(AemilPaths.mods).use { files ->
+        val directory = version?.let { AemilPaths.gameDirectory(it).resolve("mods") } ?: AemilPaths.mods
+        Files.createDirectories(directory)
+        return Files.list(directory).use { files ->
             files.filter { path ->
                 val name = path.fileName.toString()
-                Files.isRegularFile(path) && (name.endsWith(".jar") || name.endsWith(".jar.disabled"))
+                Files.isRegularFile(path) && name !in setOf("aemil-loader.jar", "aemil-client.jar", "aemil-phosphor-fabric-1.19.x.jar", "fabric-api.jar") &&
+                    (name.endsWith(".jar") || name.endsWith(".jar.disabled"))
             }.map { path -> UserMod(path, path.fileName.toString().endsWith(".jar")) }
                 .sorted(compareBy(String.CASE_INSENSITIVE_ORDER) { it.path.fileName.toString() })
                 .toList()

@@ -55,7 +55,6 @@ dependencies {
     implementation(iris)
     implementation(architectury)
     implementation(forgeConfigApiPort)
-    include("net.fabricmc.fabric-api:fabric-api:${fabricApiVersion.get()}")
     include("net.fabricmc:fabric-language-kotlin:${fabricLanguageKotlinVersion.get()}")
     include(dynamicFps)
     include(clothConfig)

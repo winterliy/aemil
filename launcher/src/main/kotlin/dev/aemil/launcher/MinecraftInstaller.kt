@@ -23,6 +23,7 @@ import java.util.Locale
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.zip.ZipFile
+import javax.xml.parsers.DocumentBuilderFactory
 import javax.imageio.ImageIO
 
 internal data class InstalledProfile(
@@ -42,6 +43,7 @@ internal data class NativeLibrary(val jar: Path, val exclusions: Set<String>)
 internal object MinecraftInstaller {
     private const val MANIFEST_URL = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"
     private const val FABRIC_META_URL = "https://meta.fabricmc.net/v2/versions/loader"
+    private const val FABRIC_MAVEN = "https://maven.fabricmc.net"
     private val http = HttpClient.newBuilder().followRedirects(HttpClient.Redirect.NORMAL).build()
     internal val operatingSystem: String by lazy {
         val name = System.getProperty("os.name").lowercase(Locale.ROOT)
@@ -76,6 +78,7 @@ internal object MinecraftInstaller {
             ?.asJsonObject?.getAsJsonObject("loader")?.get("version")?.asString
             ?: error("No stable Aemil Loader is available for Minecraft $gameVersion")
         val fabricProfile = getJson(URI.create("$FABRIC_META_URL/$gameVersion/$loader/profile/json"))
+        installFabricLoaderResource(gameVersion, loader)
         val fabricProfileId = fabricProfile.get("id")?.asString ?: error("Loader profile did not include an ID")
         val profileId = fabricProfileId.replaceFirst("fabric-loader-", "aemil-loader-")
         fabricProfile.addProperty("id", profileId)
@@ -139,6 +142,7 @@ internal object MinecraftInstaller {
 
         val installedNatives = natives.map { (download, exclusions) -> NativeLibrary(download.target, exclusions) }
         AemilPaths.ensureGameLayout(gameVersion)
+        installFabricApi(gameVersion)
         AemilPaths.synchronizeUserMods(gameVersion)
         registerLauncherProfile(gameVersion, profileId, assetIndex, clientPath)
         return InstalledProfile(gameVersion, versionEntry.get("type").asString, loader, profileId, profilePath, clientPath, assetIndex, loggingConfigPath, installedNatives)
@@ -163,6 +167,7 @@ internal object MinecraftInstaller {
         profile.addProperty("name", profileName)
         profiles.add(profileName, profile)
         profile.addProperty("lastVersionId", profileId)
+        profile.addProperty("gameDir", AemilPaths.gameDirectory(gameVersion).toAbsolutePath().toString())
         profile.addProperty("lastUsed", Instant.now().toString())
         wheatIcon(assetIndex, clientPath)?.let { profile.addProperty("icon", it) }
         val temporary = launcherProfiles.resolveSibling("${launcherProfiles.fileName}.tmp")
@@ -172,6 +177,80 @@ internal object MinecraftInstaller {
         } catch (_: java.nio.file.AtomicMoveNotSupportedException) {
             Files.move(temporary, launcherProfiles, StandardCopyOption.REPLACE_EXISTING)
         }
+    }
+
+    private fun installFabricLoaderResource(gameVersion: String, loaderVersion: String) {
+        val embedded = MinecraftInstaller::class.java.getResourceAsStream("/builtin/fabric/$gameVersion/fabric-loader.jar")
+            ?: return
+        val destination = AemilPaths.minecraftRoot.resolve("libraries/net/fabricmc/fabric-loader/$loaderVersion/fabric-loader-$loaderVersion.jar")
+        Files.createDirectories(destination.parent)
+        val temporary = destination.resolveSibling("${destination.fileName}.embedded")
+        embedded.use { input -> Files.copy(input, temporary, StandardCopyOption.REPLACE_EXISTING) }
+        val embeddedVersion = ZipFile(temporary.toFile()).use { archive ->
+            val metadata = archive.getEntry("fabric.mod.json")
+            if (metadata == null) null else archive.getInputStream(metadata).use { input ->
+                JsonParser.parseReader(input.reader()).asJsonObject.get("version")?.asString
+            }
+        }
+        if (embeddedVersion != loaderVersion) {
+            Files.deleteIfExists(temporary)
+            return
+        }
+        try {
+            Files.move(temporary, destination, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE)
+        } catch (_: java.nio.file.AtomicMoveNotSupportedException) {
+            Files.move(temporary, destination, StandardCopyOption.REPLACE_EXISTING)
+        }
+    }
+
+    private fun installFabricApi(gameVersion: String) {
+        val destinationDir = AemilPaths.gameDirectory(gameVersion).resolve("mods")
+        Files.createDirectories(destinationDir)
+        val destination = destinationDir.resolve("fabric-api.jar")
+        val embedded = MinecraftInstaller::class.java.getResourceAsStream("/builtin/fabric/$gameVersion/fabric-api.jar")
+        if (embedded != null) {
+            embedded.use { input -> Files.copy(input, destination, StandardCopyOption.REPLACE_EXISTING) }
+            return
+        }
+
+        val metadataRequest = HttpRequest.newBuilder(URI.create("$FABRIC_MAVEN/net/fabricmc/fabric-api/fabric-api/maven-metadata.xml")).GET().build()
+        val metadataResponse = http.send(metadataRequest, HttpResponse.BodyHandlers.ofString())
+        check(metadataResponse.statusCode() in 200..299) { "Could not find Fabric API versions (${metadataResponse.statusCode()})" }
+        val factory = DocumentBuilderFactory.newInstance().apply {
+            setFeature("http://apache.org/xml/features/disallow-doctype-decl", true)
+            setFeature("http://xml.org/sax/features/external-general-entities", false)
+            setFeature("http://xml.org/sax/features/external-parameter-entities", false)
+        }
+        val document = factory.newDocumentBuilder().parse(ByteArrayInputStream(metadataResponse.body().toByteArray()))
+        val versions = document.getElementsByTagName("version")
+        val compatible = (0 until versions.length).map { versions.item(it).textContent }
+            .filter { it.substringAfter('+', "") == gameVersion }
+        val apiVersion = compatible.maxWithOrNull { left, right -> compareFabricApiVersions(left, right) }
+            ?: error("No Fabric API build is published for Minecraft $gameVersion")
+        val relativePath = "net/fabricmc/fabric-api/fabric-api/$apiVersion/fabric-api-$apiVersion.jar"
+        val artifactUri = URI.create("$FABRIC_MAVEN/$relativePath")
+        val checksumRequest = HttpRequest.newBuilder(URI.create("$FABRIC_MAVEN/$relativePath.sha1")).GET().build()
+        val checksumResponse = http.send(checksumRequest, HttpResponse.BodyHandlers.ofString())
+        check(checksumResponse.statusCode() in 200..299) { "Could not verify Fabric API $apiVersion checksum (${checksumResponse.statusCode()})" }
+        val checksum = checksumResponse.body().trim().split(Regex("\\s+")).firstOrNull().orEmpty()
+        check(checksum.matches(Regex("[0-9a-fA-F]{40}"))) { "Fabric API $apiVersion returned an invalid SHA-1 checksum" }
+        val temporary = destination.resolveSibling("${destination.fileName}.tmp")
+        download(Download(artifactUri.toString(), temporary, checksum))
+        try {
+            Files.move(temporary, destination, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE)
+        } catch (_: java.nio.file.AtomicMoveNotSupportedException) {
+            Files.move(temporary, destination, StandardCopyOption.REPLACE_EXISTING)
+        }
+    }
+
+    private fun compareFabricApiVersions(left: String, right: String): Int {
+        val leftParts = left.substringBefore('+').split('.').map { it.toIntOrNull() ?: 0 }
+        val rightParts = right.substringBefore('+').split('.').map { it.toIntOrNull() ?: 0 }
+        for (index in 0 until maxOf(leftParts.size, rightParts.size)) {
+            val difference = leftParts.getOrElse(index) { 0 }.compareTo(rightParts.getOrElse(index) { 0 })
+            if (difference != 0) return difference
+        }
+        return left.compareTo(right)
     }
 
     fun extractNatives(profile: InstalledProfile): Path {
